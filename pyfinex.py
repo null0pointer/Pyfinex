@@ -1,3 +1,5 @@
+from consts import *
+
 import websocket
 import thread
 import time
@@ -5,39 +7,38 @@ import json
 
 class PyfinexWebsocket:
     
-    BOOK_SUBSCRIBE_STRING = "{\"event\":\"subscribe\",\"channel\":\"book\",\"pair\":\"BTCUSD\",\"prec\":\"P0\"}"
-    TICKER_SUBSCRIBE_STRING = "{\"event\":\"subscribe\",\"channel\":\"ticker\",\"pair\":\"BTCUSD\"}"
-    TRADES_SUBSCRIBE_STRING = "{\"event\":\"subscribe\",\"channel\":\"trades\",\"pair\":\"BTCUSD\"}"
-    
     def __init__(self):
         websocket.enableTrace(True)
-        self.ws = websocket.WebSocketApp("wss://api2.bitfinex.com:3000/ws", on_message = self.on_message, on_error = self.on_error, on_close = self.on_close)
+        self.ws = websocket.WebSocketApp(BFX_WEBSOCKET_ADDRESS, on_message = self.on_message, on_error = self.on_error, on_close = self.on_close)
         self.ws.on_open = self.on_open
         self.ws.run_forever()
         
     def subscribe_book(self):
         print "subscribing to BTCUSD book"
-        self.ws.send(PyfinexWebsocket.BOOK_SUBSCRIBE_STRING);
+        self.ws.send(BOOK_SUBSCRIBE_STRING);
 
     def subscribe_ticker(self):
         print "subscribing to BTCUSD ticker"
-        self.ws.send(PyfinexWebsocket.TICKER_SUBSCRIBE_STRING);
+        self.ws.send(TICKER_SUBSCRIBE_STRING);
         
     def subscribe_trades(self):
         print "subscribing to BTCUSD trades"
-        self.ws.send(PyfinexWebsocket.TRADES_SUBSCRIBE_STRING);
+        self.ws.send(TRADES_SUBSCRIBE_STRING);
 
     def on_message(self, ws, message):
         print message
         obj = json.loads(message);
         if (type(obj) is dict):
-            if (obj["event"] == "subscribed"):
-                channel = obj["channel"]
+            if (obj[KEY_EVENT] == EVENT_SUBSCRIBED):
+                channel = obj[KEY_CHANNEL_NAME]
                 if (channel == "book"):
+                    self.book_channel_id = obj[KEY_CHANNEL_ID];
                     print "subscribed to the orderbook"
                 elif (channel == "ticker"):
+                    self.ticker_channel_id = obj[KEY_CHANNEL_ID];
                     print "subscribed to the ticker"
                 elif (channel == "trades"):
+                    self.trades_channel_id = obj[KEY_CHANNEL_ID];
                     print "subscribed to the trades"
 
     def on_error(self, ws, error):
