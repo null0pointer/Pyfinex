@@ -2,7 +2,9 @@ from consts import *
 
 import websocket
 import thread
+import threading
 import time
+from time import sleep
 import json
 
 class PyfinexWebsocket:
@@ -11,7 +13,15 @@ class PyfinexWebsocket:
         websocket.enableTrace(True)
         self.ws = websocket.WebSocketApp(BFX_WEBSOCKET_ADDRESS, on_message = self.__on_message, on_error = self.__on_error, on_close = self.__on_close)
         self.ws.on_open = self.__on_open
-        self.ws.run_forever()
+        self.wst = threading.Thread(target = self.ws.run_forever)
+        self.wst.daemon = True
+        self.wst.start()
+        
+        # block main thread for at most 5 seconds or until websocket is connected
+        connection_timeout = 5
+        while not self.ws.sock.connected and connection_timeout:
+                sleep(1)
+                connection_timeout -= 1
         
     def subscribe_book(self):
         print "subscribing to BTCUSD book"
@@ -116,9 +126,4 @@ class PyfinexWebsocket:
         print "### closed ###"
 
     def __on_open(self, ws):
-        # self.subscribe_book()
-        self.subscribe_ticker()
-        # self.subscribe_trades()
-
-if __name__ == "__main__":
-    pf = PyfinexWebsocket()
+        print "### opened ###"
