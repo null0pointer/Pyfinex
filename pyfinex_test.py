@@ -39,9 +39,14 @@ def book_update(price, count, amount, clear):
 
 if __name__ == "__main__":
     pf = PyfinexWebsocket()
-    pf.subscribe_ticker(ticker_update)
-    pf.subscribe_trades(trades_update)
-    pf.subscribe_book(book_update)
+    # pf.subscribe_ticker(ticker_update)
+    # pf.subscribe_trades(trades_update)
+    # pf.subscribe_book(book_update)
+    
+    lines = [line.strip() for line in open('api.keys')]
+    api_key = lines[0]
+    api_secret = lines[1]
+    pf.subscribe_private(api_key, api_secret)
     
     while True:
         sleep(1)

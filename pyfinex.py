@@ -6,6 +6,8 @@ import threading
 import time
 from time import sleep
 import json
+import hmac
+import hashlib
 
 class PyfinexWebsocket:
     
@@ -40,6 +42,33 @@ class PyfinexWebsocket:
         print "subscribing to BTCUSD trades"
         self.ws.send(TRADES_SUBSCRIBE_STRING);
         self.trades_callback = callback
+        
+    def subscribe_private(self, api_key, api_secret):
+        ### JS authentication example from API docs ###
+#         var
+#             crypto = require('crypto'),
+#             api_key = 'API_KEY',
+#             api_secret = 'API_SECRET',
+#             payload = 'AUTH' + (new Date().getTime()),
+#             signature = crypto.createHmac("sha384", api_secret).update(payload).digest('hex');
+#         w.send(JSON.stringify({
+#             event: "auth",
+#             apiKey: api_key,
+#             authSig: signature,
+#             authPayload: payload
+#         }));
+
+        payload = "AUTH" + str(int(time.time() * 1000))
+        signature = hmac.new(api_secret, payload, hashlib.sha384).hexdigest()
+        auth_request = json.dumps({"event": "auth", "apiKey": api_key, "authSig": signature, "authPayload": payload})
+        
+        if (self.debug):
+            print "API Key: " + api_key
+            print "Signature Payload: " + payload
+            print "Signature: " + signature
+            print auth_request
+            
+        self.ws.send(auth_request)
         
     def __update_book(self, update_object):
         if (self.debug):
@@ -143,6 +172,8 @@ class PyfinexWebsocket:
                     elif (channel == "trades"):
                         self.trades_channel_id = obj[KEY_CHANNEL_ID];
                         print "subscribed to the trades"
+                elif (obj[KEY_EVENT] == "auth"):
+                    print message
                         
         elif (type(obj) is list):
             if (len(obj) > 0):
