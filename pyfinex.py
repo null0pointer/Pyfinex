@@ -26,9 +26,10 @@ class PyfinexWebsocket:
                 sleep(1)
                 connection_timeout -= 1
         
-    def subscribe_book(self):
+    def subscribe_book(self, callback):
         print "subscribing to BTCUSD book"
         self.ws.send(BOOK_SUBSCRIBE_STRING);
+        self.book_callback = callback
 
     def subscribe_ticker(self, callback):
         print "subscribing to BTCUSD ticker"
@@ -43,12 +44,21 @@ class PyfinexWebsocket:
     def __update_book(self, update_object):
         if (self.debug):
             print update_object
+            
+        if (hasattr(self, "book_callback")):
+            price = update_object[0]
+            count = update_object[1]
+            amount = update_object[2]
+            self.book_callback(price, count, amount, False)
         
     def __parse_book_message(self, message_object):
         if (len(message_object) > 1):
             if (type(message_object[1]) is list):
                 book_updates = message_object[1]
-                # todo: zero out the book because this is a snapshot
+                
+                if (hasattr(self, "book_callback")):
+                    self.book_callback(None, None, None, True)
+                
                 for update_object in book_updates:
                     self.__update_book(update_object)
             else:

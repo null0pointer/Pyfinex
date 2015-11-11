@@ -28,11 +28,20 @@ def trades_update(sequence_id, timestamp, price, amount):
     buy_sold = "sold" if (amount < 0) else "bought"
     trade_string = str(timestamp) + ": " + str(abs(amount)) + " " + buy_sold + " at " + str(price)
     print trade_string
+    
+def book_update(price, count, amount, clear):
+    if not clear:
+        bid_ask = "bid" if (amount > 0) else "ask"
+        book_string = str(price) + " " + bid_ask + " for " + str(abs(amount)) + " BTC"
+        print book_string
+    else:
+        print "Orderbook cleared!"
 
 if __name__ == "__main__":
     pf = PyfinexWebsocket()
     pf.subscribe_ticker(ticker_update)
     pf.subscribe_trades(trades_update)
+    pf.subscribe_book(book_update)
     
     while True:
         sleep(1)
