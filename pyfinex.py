@@ -9,8 +9,11 @@ import json
 
 class PyfinexWebsocket:
     
-    def __init__(self):
-        websocket.enableTrace(True)
+    def __init__(self, debug = False):
+        self.debug = debug
+        if (self.debug):
+            websocket.enableTrace(True)
+            
         self.ws = websocket.WebSocketApp(BFX_WEBSOCKET_ADDRESS, on_message = self.__on_message, on_error = self.__on_error, on_close = self.__on_close)
         self.ws.on_open = self.__on_open
         self.wst = threading.Thread(target = self.ws.run_forever)
@@ -27,16 +30,19 @@ class PyfinexWebsocket:
         print "subscribing to BTCUSD book"
         self.ws.send(BOOK_SUBSCRIBE_STRING);
 
-    def subscribe_ticker(self):
+    def subscribe_ticker(self, callback):
         print "subscribing to BTCUSD ticker"
         self.ws.send(TICKER_SUBSCRIBE_STRING);
+        self.ticker_callback = callback
         
-    def subscribe_trades(self):
+    def subscribe_trades(self, callback):
         print "subscribing to BTCUSD trades"
         self.ws.send(TRADES_SUBSCRIBE_STRING);
+        self.trades_callback = callback
         
     def __update_book(self, update_object):
-        print update_object
+        if (self.debug):
+            print update_object
         
     def __parse_book_message(self, message_object):
         if (len(message_object) > 1):
@@ -50,7 +56,21 @@ class PyfinexWebsocket:
                 self.__update_book(message_object)
     
     def __update_ticker(self, update_object):
-        print update_object
+        if (self.debug):
+            print update_object
+            
+        if (hasattr(self, "ticker_callback")):
+            bid = update_object[0]
+            bid_size = update_object[1]
+            ask = update_object[2]
+            ask_size = update_object[3]
+            daily_change = update_object[4]
+            daily_change_percentage = update_object[5]
+            last_price = update_object[6]
+            volume = update_object[7]
+            high = update_object[8]
+            low = update_object[9]
+            self.ticker_callback(bid, bid_size, ask, ask_size, daily_change, daily_change_percentage, last_price, volume, high, low)
         
     def __parse_ticker_message(self, message_object):
         message_object.pop(0)
@@ -77,7 +97,15 @@ class PyfinexWebsocket:
             self.__update_ticker(message_object)
     
     def __update_trades(self, update_object):
-        print update_object
+        if (self.debug):
+            print update_object
+            
+        if (hasattr(self, "trades_callback")):
+            sequence_id = update_object[0]
+            timestamp = update_object[1]
+            price = update_object[2]
+            amount = update_object[3]
+            self.trades_callback(sequence_id, timestamp, price, amount)
         
     def __parse_trades_message(self, message_object):
         if (len(message_object) > 1):
@@ -123,7 +151,7 @@ class PyfinexWebsocket:
         print error
 
     def __on_close(self, ws):
-        print "### closed ###"
+        print "### closed connection to " + BFX_WEBSOCKET_ADDRESS + " ###"
 
     def __on_open(self, ws):
-        print "### opened ###"
+        print "### opened connection to " + BFX_WEBSOCKET_ADDRESS + " ###"
