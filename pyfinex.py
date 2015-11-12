@@ -43,7 +43,7 @@ class PyfinexWebsocket:
         self.ws.send(TRADES_SUBSCRIBE_STRING);
         self.trades_callback = callback
         
-    def subscribe_private(self, api_key, api_secret):
+    def subscribe_private(self, api_key, api_secret, callbacks):
         ### JS authentication example from API docs ###
 #         var
 #             crypto = require('crypto'),
@@ -155,6 +155,78 @@ class PyfinexWebsocket:
             else:
                 message_object.pop(0)
                 self.__update_trades(message_object)
+                
+    def __update_private_wallet(self, update_object):
+        if (self.debug):
+            print update_object
+            
+        if (hasattr(self, "private_wallet_callback")):
+            name = update_object[0]
+            currency = update_object[1]
+            balance = update_object[2]
+            unsettled_interest = update_object[3]
+            self.private_wallet_callback(name, currency, balance, unsettled_interest)
+            
+    def __update_private_position(self, update_object):
+        if (self.debug):
+            print update_object
+            
+        if (hasattr(self, "private_position_callback")):
+            pair = update_object[0]
+            status = update_object[1]
+            amount = update_object[2]
+            base_price = update_object[3]
+            margin_funding = update_object[4]
+            margin_funding_type = update_object[5]
+            self.private_position_callback(pair, status, amount, base_price, margin_funding, margin_funding_type)
+            
+    def __update_private_order(self, update_object):
+        if (self.debug):
+            print update_object
+            
+        if (hasattr(self, "private_order_callback")):
+            order_id = update_object[0]
+            pair = update_object[1]
+            amount = update_object[2]
+            original_amount = update_object[3]
+            order_type = update_object[4]
+            status = update_object[5]
+            price = update_object[6]
+            price_average = update_object[7]
+            created_at = update_object[8]
+            notify = update_object[9]
+            hidden = update_object[10]
+            self.private_order_callback(order_id, pair, amount, original_amount, order_type, status, price, price_average, created_at, notify, hidden)
+                
+    def __parse_private_message(self, message_object):
+        print message_object
+        message_object.pop(0)
+        message_type = message_object.pop(0)
+        
+        if (message_type == "ws"):
+            for update_object in message_object[0]:
+                self.__update_private_wallet(update_object)
+        elif (message_type == "wu"):
+            update_object = message_object[0]
+            self.__update_private_wallet(update_object)
+        elif (message_type == "ps"):
+            for update_object in message_object[0]:
+                self.__update_private_position(update_object)
+        elif (message_type == "pn" or message_type == "pu" or message_type == "pc"):
+            update_object = message_object[0]
+            self.__update_private_position(update_object)
+        elif (message_type == "os"):
+            for update_object in message_object[0]:
+                self.__update_private_order(update_object)
+        elif (message_type == "on" or message_type == "ou" or message_type == "oc"):
+            update_object = message_object[0]
+            self.__update_private_order(update_object)
+        elif (message_type == "ts"):
+            pass
+        elif (message_type == "te"):
+            pass
+        elif (message_type == "tu"):
+            pass
 
     def __on_message(self, ws, message):
         obj = json.loads(message);
@@ -173,7 +245,13 @@ class PyfinexWebsocket:
                         self.trades_channel_id = obj[KEY_CHANNEL_ID];
                         print "subscribed to the trades"
                 elif (obj[KEY_EVENT] == "auth"):
-                    print message
+                    status = obj["status"]
+                    if (status == "OK"):
+                        # should always be channel id 0
+                        self.private_channel_id = obj[KEY_CHANNEL_ID]
+                    elif (status == "FAIL"):
+                        # should throw exception here
+                        print "Error: " + obj["code"]
                         
         elif (type(obj) is list):
             if (len(obj) > 0):
@@ -187,6 +265,9 @@ class PyfinexWebsocket:
                 if (hasattr(self, "trades_channel_id")):
                     if (channel_id == self.trades_channel_id):
                         self.__parse_trades_message(obj)
+                if (hasattr(self, "private_channel_id")):
+                    if (channel_id == self.private_channel_id):
+                        self.__parse_private_message(obj)
 
     def __on_error(self, ws, error):
         print error

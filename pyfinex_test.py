@@ -1,4 +1,5 @@
 from time import sleep
+import time
 
 from pyfinex import PyfinexWebsocket
 
@@ -9,7 +10,7 @@ def ticker_update(bid, bid_size, ask, ask_size, daily_change, daily_change_perce
     low_price_string = "{:.2f}".format(low)
     high_price_string = "{:.2f}".format(high)
     
-    price_string = low_price_string
+    price_string = str(int(time.time() * 1000)) + ": " + low_price_string + "-"
     current = low
     dash_count = 0
     while current < last_price:
@@ -18,15 +19,15 @@ def ticker_update(bid, bid_size, ask, ask_size, daily_change, daily_change_perce
         price_string += "-"
         
     price_string += last_price_string
-    for i in range(dash_count, 51):
+    for i in range(dash_count, 50):
         price_string += "-"
-    price_string += high_price_string
+    price_string += "-" + high_price_string
         
     print price_string
     
 def trades_update(sequence_id, timestamp, price, amount):
     buy_sold = "sold" if (amount < 0) else "bought"
-    trade_string = str(timestamp) + ": " + str(abs(amount)) + " " + buy_sold + " at " + str(price)
+    trade_string = "trade " + str(sequence_id) + " at " + str(timestamp) + ": " + str(abs(amount)) + " " + buy_sold + " at " + str(price)
     print trade_string
     
 def book_update(price, count, amount, clear):
